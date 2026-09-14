@@ -7,7 +7,7 @@
  * AUTOR    : Franklin Brasil                                                *
  * ALTERADO : Marcelo Antonio Lazzaro Carli                                  *
  * DATA     : 29.05.2026                                                     *
- * ULT. ALT.: 14.08.2026                                                     *
+ * ULT. ALT.: 14.09.2026                                                     *
  *****************************************************************************/
 #include "hbclass.ch"
 
@@ -18,7 +18,7 @@
 #define ESOCIAL_SOAP_ENVIO            "http://www.esocial.gov.br/servicos/empregador/lote/eventos/envio/v1_1_0/ServicoEnviarLoteEventos/EnviarLoteEventos"
 #define ESOCIAL_SOAP_CONSULTA         "http://www.esocial.gov.br/servicos/empregador/lote/eventos/envio/consulta/retornoProcessamento/v1_1_0/ServicoConsultarLoteEventos/ConsultarLoteEventos"
 
-STATIC s_cEsocialValidacaoLastError := ""
+STATIC s_cEsocialValidacaoLastError:= ""
 
 CLASS TEsocialConfig
    VAR cEnvioUrl      AS Character INIT ""
@@ -148,8 +148,8 @@ METHOD New() CLASS TEsocialEventoS2220
    LOCAL cHoje := DateXml( Date() )
 
    ::cId := EsocialNovoId()
-   ::cDtAso := cHoje
-   ::cDtExm := cHoje
+   ::cDtAso  := cHoje
+   ::cDtExm  := cHoje
    ::aExames := {}
 RETURN Self
 
@@ -197,8 +197,12 @@ METHOD SetExame( cDtExm, cProcRealizado, cIndResult, cObsProc, cOrdExame ) CLASS
 RETURN ::AddExame( cDtExm, cProcRealizado, cIndResult, cObsProc, cOrdExame )
 
 METHOD AddExame( cDtExm, cProcRealizado, cIndResult, cObsProc, cOrdExame ) CLASS TEsocialEventoS2220
-   ::cDtExm := DateXml( cDtExm )
-   ::cProcRealizado := Alltrim( Left( OnlyDigits( cProcRealizado ), 4 ) )
+   IF cDtExm != Nil
+      ::cDtExm := DateXml( cDtExm )
+   ENDIF
+   IF cProcRealizado != Nil
+      ::cProcRealizado := Alltrim( Left( OnlyDigits( cProcRealizado ), 4 ) )
+   ENDIF
    IF cIndResult != Nil
       ::cIndResult := Iif( !( cIndResult $ [1_2_3_4] ), [1], Left( cIndResult, 1 ) )
    ENDIF
@@ -257,19 +261,22 @@ METHOD ToXml() CLASS TEsocialEventoS2220
    IF Len( ::aExames ) == 0
       ::AddExame( ::cDtExm, ::cProcRealizado, ::cIndResult, ::cObsProc, ::cOrdExame )
    ENDIF
+
    FOR nI := 1 TO Len( ::aExames )
-      aExame := ::aExames[ nI ]
-      cXml += '<exame><dtExm>' + aExame[ 1 ] + '</dtExm><procRealizado>' + aExame[ 2 ] + '</procRealizado>'
-      IF ! Empty( aExame[ 4 ] )
-         cXml += '<obsProc>' + EsocialXmlEscape( aExame[ 4 ] ) + '</obsProc>'
-      ENDIF
-      IF ! Empty( aExame[ 5 ] )
-         cXml += '<ordExame>' + aExame[ 5 ] + '</ordExame>'
-      ENDIF
-      IF ! Empty( aExame[ 3 ] )
-         cXml += '<indResult>' + aExame[ 3 ] + '</indResult>'
-      ENDIF
-      cXml += '</exame>'
+       aExame := ::aExames[ nI ]
+        IF !Empty( OnlyDigits( aExame[ 1 ] ) )
+          cXml += '<exame><dtExm>' + aExame[ 1 ] + '</dtExm><procRealizado>' + aExame[ 2 ] + '</procRealizado>'
+          IF ! Empty( aExame[ 4 ] )
+             cXml += '<obsProc>' + EsocialXmlEscape( aExame[ 4 ] ) + '</obsProc>'
+          ENDIF
+          IF ! Empty( aExame[ 5 ] )
+             cXml += '<ordExame>' + aExame[ 5 ] + '</ordExame>'
+          ENDIF
+          IF ! Empty( aExame[ 3 ] )
+             cXml += '<indResult>' + aExame[ 3 ] + '</indResult>'
+          ENDIF
+          cXml += '</exame>'
+       ENDIF
    NEXT
    cXml += '<medico><nmMed>' + EsocialXmlEscape( ::cNmMed ) + '</nmMed>'
    IF ! Empty( ::cNrCRM )
@@ -278,7 +285,8 @@ METHOD ToXml() CLASS TEsocialEventoS2220
    IF ! Empty( ::cUfCRM )
       cXml += '<ufCRM>' + ::cUfCRM + '</ufCRM>'
    ENDIF
-   cXml += '</medico></aso>'
+   cXml += '</medico>'
+   cXml += '</aso>'
    IF ! Empty( ::cNmRespMonit )
       cXml += '<respMonit>'
       IF ! Empty( ::cCpfRespMonit )
@@ -845,7 +853,6 @@ RETURN Self
 METHOD SetAgente( cCodAgNoc, cDscAgNoc, cTpAval, cIntConc, cLimTol, cUnMed, cTecMedicao, cNrProcJud, cUtilizEPC, cEficEpc, cUtilizEPI, cEficEpi ) CLASS TEsocialEventoS2240
    ::aAgentes := {}
 RETURN ::AddAgente( cCodAgNoc, cDscAgNoc, cTpAval, cIntConc, cLimTol, cUnMed, cTecMedicao, cNrProcJud, cUtilizEPC, cEficEpc, cUtilizEPI, cEficEpi )
-
 
 METHOD AddAgente( cCodAgNoc, cDscAgNoc, cTpAval, cIntConc, cLimTol, cUnMed, cTecMedicao, cNrProcJud, cUtilizEPC, cEficEpc, cUtilizEPI, cEficEpi ) CLASS TEsocialEventoS2240
    AAdd( ::aAgentes, { Alltrim( Left( cCodAgNoc, 9 ) ), Iif (cCodAgNoc == [01.01.001] .or. cCodAgNoc == [01.02.001] .or. cCodAgNoc == [01.03.001] .or. cCodAgNoc == [01.04.001] .or. cCodAgNoc == [01.05.001] .or. cCodAgNoc == [01.06.001] .or. cCodAgNoc == [01.07.001] .or. cCodAgNoc == [01.08.001] .or. cCodAgNoc == [01.09.001] .or. cCodAgNoc == [01.10.001] .or. cCodAgNoc == [01.12.001] .or. cCodAgNoc == [01.13.001] .or. cCodAgNoc == [01.14.001] .or. cCodAgNoc == [01.15.001] .or. cCodAgNoc == [01.16.001] .or. cCodAgNoc == [01.17.001] .or. cCodAgNoc == [01.18.001] .or. cCodAgNoc == [05.01.001], Alltrim( Left(cDscAgNoc, 100 ) ), ""), ;
